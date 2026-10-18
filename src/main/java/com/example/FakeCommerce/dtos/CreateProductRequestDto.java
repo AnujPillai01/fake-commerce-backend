@@ -1,0 +1,21 @@
+package com.example.FakeCommerce.dtos;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CreateProductRequestDto {
+    private String title;
+    private String description;
+    private BigDecimal price;
+    private Long categoryId;
+    private String image;
+    private BigDecimal rating;
+}

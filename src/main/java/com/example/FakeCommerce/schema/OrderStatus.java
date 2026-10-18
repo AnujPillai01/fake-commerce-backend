@@ -1,0 +1,8 @@
+package com.example.FakeCommerce.schema;
+
+public enum OrderStatus {
+    SHIPPED,
+    PENDING,
+    CANCELED,
+    DELIVERED,
+}
