@@ -13,6 +13,8 @@ import java.util.List;
 public interface OrderItemRepository extends JpaRepository<OrderItem,Long> {
     List<OrderItem> findByOrderId(Long orderId);
 
+    List<OrderItem> findByVendorId(Long vendorId);
+
     @Query("SELECT oi from OrderItem oi JOIN FETCH oi.product WHERE oi.order = :order")
     List<OrderItem> findByOrderWithProduct(@Param("order") Order order);
 }

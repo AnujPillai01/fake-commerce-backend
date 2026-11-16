@@ -1,7 +1,9 @@
 package com.example.FakeCommerce.controllers;
 
-import com.example.FakeCommerce.dtos.*;
-import com.example.FakeCommerce.schema.Order;
+import com.example.FakeCommerce.dtos.ApiResponseDto;
+import com.example.FakeCommerce.dtos.CheckoutRequestDto;
+import com.example.FakeCommerce.dtos.GetOrderResponseDto;
+import com.example.FakeCommerce.dtos.UpdateOrderStatusDto;
 import com.example.FakeCommerce.services.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -11,53 +13,44 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/orders")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/orders")
 public class OrderController {
-    private OrderService orderService;
 
-    @GetMapping
-    public ResponseEntity<ApiResponseDto<List<GetOrderResponseDto>>> getAllOrders(){
-        List<GetOrderResponseDto> orders = orderService.getAllOrders();
+    private final OrderService orderService;
 
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponseDto.success("Orders fetched successfully",orders));
+    @PostMapping("/user/{userId}/checkout")
+    public ResponseEntity<ApiResponseDto<GetOrderResponseDto>> checkoutCart(
+            @PathVariable Long userId,
+            @RequestBody CheckoutRequestDto requestDto) {
+        GetOrderResponseDto orderResponse = orderService.checkoutCart(userId, requestDto);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponseDto.success("Cart checked out successfully", orderResponse));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponseDto<GetOrderResponseDto>> getOrderById(@PathVariable Long id){
-        GetOrderResponseDto order = orderService.getOrderById(id);
-
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponseDto.success("Order fetched successfully",order));
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<ApiResponseDto<List<GetOrderResponseDto>>> getOrdersByUser(@PathVariable Long userId) {
+        List<GetOrderResponseDto> orders = orderService.getOrdersByUser(userId);
+        return ResponseEntity.ok(ApiResponseDto.success("User orders fetched successfully", orders));
     }
 
-    @GetMapping("/{id}/summary")
-    public ResponseEntity<ApiResponseDto<GetOrderSummaryResponseDto>> getOrderSummary(@PathVariable Long id){
-        GetOrderSummaryResponseDto responseDto = orderService.getOrderSummary(id);
-
-        return ResponseEntity.status(HttpStatus.OK).body(ApiResponseDto.success("Order summary fetched successfully",responseDto));
+    @GetMapping("/{orderId}")
+    public ResponseEntity<ApiResponseDto<GetOrderResponseDto>> getOrderById(@PathVariable Long orderId) {
+        GetOrderResponseDto order = orderService.getOrderById(orderId);
+        return ResponseEntity.ok(ApiResponseDto.success("Order fetched successfully", order));
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponseDto<GetOrderResponseDto>> createOrder(@RequestBody CreateOrderRequestDto requestDto){
-        GetOrderResponseDto order = orderService.createOrder(requestDto);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponseDto.success("Order created successfully",order));
+    @PatchMapping("/{orderId}/status")
+    public ResponseEntity<ApiResponseDto<GetOrderResponseDto>> updateOrderStatus(
+            @PathVariable Long orderId,
+            @RequestBody UpdateOrderStatusDto requestDto) {
+        GetOrderResponseDto updatedOrder = orderService.updateOrderStatus(orderId, requestDto);
+        return ResponseEntity.ok(ApiResponseDto.success("Order status updated successfully", updatedOrder));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponseDto<GetOrderResponseDto>> updateOrder(@PathVariable Long id, @RequestBody UpdateOrderRequestDto requestDto){
-        GetOrderResponseDto order = orderService.updateOrder(id, requestDto);
-
-        return ResponseEntity.status(HttpStatus.OK).body(ApiResponseDto.success("Order updated successfully",order));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponseDto<Void>> deleteOrder(@PathVariable Long id){
-        orderService.deleteOrder(id);
-
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponseDto.success("Order deleted successfully",null));
+    @GetMapping("/vendor/{vendorId}")
+    public ResponseEntity<ApiResponseDto<List<GetOrderResponseDto>>> getOrdersByVendor(@PathVariable Long vendorId) {
+        List<GetOrderResponseDto> vendorOrders = orderService.getOrdersByVendor(vendorId);
+        return ResponseEntity.ok(ApiResponseDto.success("Vendor orders fetched successfully", vendorOrders));
     }
 }

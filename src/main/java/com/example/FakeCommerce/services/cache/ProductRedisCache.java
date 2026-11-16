@@ -1,6 +1,7 @@
 package com.example.FakeCommerce.services.cache;
 
 import com.example.FakeCommerce.dtos.GetProductResponseDto;
+import com.example.FakeCommerce.dtos.GetProductWithDetailsResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -20,7 +21,7 @@ public class ProductRedisCache {
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
 
-    public Optional<GetProductResponseDto> getSummary(Long id){
+    public Optional<GetProductWithDetailsResponseDto> getSummary(Long id){
       String responseJson = stringRedisTemplate.opsForValue().get(KEY_SUMMARY + id);
 
       if(responseJson == null) {
@@ -32,7 +33,7 @@ public class ProductRedisCache {
       //cache hit
         log.info("Cache hit for product summary , {} ", id);
       try {
-          GetProductResponseDto response = objectMapper.readValue(responseJson, GetProductResponseDto.class);
+          GetProductWithDetailsResponseDto response = objectMapper.readValue(responseJson, GetProductWithDetailsResponseDto.class);
           return Optional.of(response);
       }catch(Exception e) {
           log.error("Error while getting product summary from redis, {}", e.getMessage());

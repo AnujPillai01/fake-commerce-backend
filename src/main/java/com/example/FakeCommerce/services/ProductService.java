@@ -1,99 +1,104 @@
 package com.example.FakeCommerce.services;
 
+import com.example.FakeCommerce.adapters.ProductAdapter;
 import com.example.FakeCommerce.dtos.CreateProductRequestDto;
 import com.example.FakeCommerce.dtos.GetProductResponseDto;
 import com.example.FakeCommerce.dtos.GetProductWithDetailsResponseDto;
-import com.example.FakeCommerce.repositories.CategoryRepository;
+import com.example.FakeCommerce.exceptions.ResourceNotFoundException;
 import com.example.FakeCommerce.repositories.ProductRepository;
 import com.example.FakeCommerce.schema.Category;
 import com.example.FakeCommerce.schema.Product;
+import com.example.FakeCommerce.schema.Vendor;
+import com.example.FakeCommerce.schema.VendorStatus;
 import com.example.FakeCommerce.services.cache.ProductRedisCache;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ProductService {
-  private final ProductRepository productRepository;
-  private final CategoryService categoryService;
-  private final ProductRedisCache productRedisCache;
+    private final ProductRepository productRepository;
+    private final CategoryService categoryService;
+    private final ProductAdapter productAdapter;
+    private final ProductRedisCache productRedisCache;
+    private final VendorService vendorService;
 
-  public List<GetProductResponseDto> getAllProducts() {
-      return productRepository.findAll().stream()
-              .map(product -> GetProductResponseDto.builder()
-                      .id(product.getId())
-                      .description(product.getDescription())
-                      .title(product.getTitle())
-                      .rating(product.getRating())
-                      .image(product.getImage())
-                      .price(product.getPrice())
-                      .build())
-              .collect(Collectors.toList());
-  }
-
-    public GetProductResponseDto getProductById(Long id) {
-        Optional<GetProductResponseDto> cachedSummary = productRedisCache.getSummary(id);
-
-        if(cachedSummary.isPresent()) {
-            return cachedSummary.get();
-        }
-
-        GetProductResponseDto responseDto = productRepository.findById(id)
-                    .map(product -> GetProductResponseDto.builder()
-                            .id(product.getId())
-                            .description(product.getDescription())
-                            .title(product.getTitle())
-                            .rating(product.getRating())
-                            .image(product.getImage())
-                            .price(product.getPrice())
-                            .build())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
-
-        productRedisCache.putSummary(id,responseDto);
-        return responseDto;
+    public List<GetProductResponseDto> getAllProducts() {
+        List<Product> products = productRepository.findAll();
+        return productAdapter.mapToGetProductResponseDtoList(products);
     }
 
-  public GetProductWithDetailsResponseDto getProductWithDetails(Long id) {
-      Product product =  productRepository.findProductWithDetails(id).get(0);
-      return GetProductWithDetailsResponseDto.builder()
-                      .id(product.getId())
-                      .description(product.getDescription())
-                      .title(product.getTitle())
-                       .category(product.getCategory().getName())
-                      .rating(product.getRating())
-                      .image(product.getImage())
-                      .price(product.getPrice())
-                      .build();
-  }
+    public GetProductResponseDto getProductById(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
 
-  public Product createProduct(CreateProductRequestDto requestDto) {
-      Category category = categoryService.getCategoryById(requestDto.getCategoryId());
-      Product newProduct = Product.builder()
-              .title(requestDto.getTitle())
-              .description(requestDto.getDescription())
-              .price(requestDto.getPrice())
-              .category(category)
-              .rating(requestDto.getRating())
-              .image(requestDto.getImage())
-              .build();
+        return productAdapter.mapToGetProductResponseDto(product);
+    }
 
-      return productRepository.save(newProduct);
-  }
+    @Transactional
+    public GetProductResponseDto createProduct(Long vendorId, CreateProductRequestDto requestDto) {
+        Vendor vendor = vendorService.getVendorByProfile(vendorId);
+        if (vendor.getStatus() != VendorStatus.APPROVED) {
+            throw new RuntimeException("Vendor account is not approved to list products!");
+        }
 
-  public void deleteProduct(Long id) {
-      productRepository.deleteById(id);
-  }
+        Category category = categoryService.getCategoryById(requestDto.getCategoryId());
 
-  public List<Product> getProductsByCategory(String category){
-      return productRepository.findByCategory(category);
-  }
+        // Generate a unique SKU for database constraint compliance
+        String generatedSku = "SKU-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
-  public List<String> getUniqueCategories(){
-      return productRepository.findAllCategories();
-  }
+        Product newProduct = Product.builder()
+                .title(requestDto.getTitle())
+                .sku(generatedSku) // FIXED: Populated required non-null SKU
+                .description(requestDto.getDescription())
+                .price(requestDto.getPrice())
+                .category(category)
+                .vendor(vendor)
+                .image(requestDto.getImage())
+                .stockQuantity(requestDto.getQuantity())
+                .build();
+
+        productRepository.save(newProduct);
+
+        return productAdapter.mapToGetProductResponseDto(newProduct);
+    }
+
+    @Transactional
+    public void deleteProduct(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
+        productRepository.delete(product); // Triggers soft delete via @SQLDelete
+    }
+
+    public List<GetProductResponseDto> getProductsByCategory(Long categoryId) {
+        List<Product> products = productRepository.findByCategoryId(categoryId);
+        return productAdapter.mapToGetProductResponseDtoList(products);
+    }
+
+    public List<GetProductResponseDto> getProductsByVendor(Long vendorId) {
+        List<Product> products = productRepository.findByVendorId(vendorId);
+        return productAdapter.mapToGetProductResponseDtoList(products);
+    }
+
+    @Transactional(readOnly = true)
+    public GetProductWithDetailsResponseDto getProductDetails(Long id) {
+        Optional<GetProductWithDetailsResponseDto> cachedSummary = productRedisCache.getSummary(id);
+        if (cachedSummary.isPresent()) {
+            return cachedSummary.get(); // Cache hit! Returns instantly without touching MySQL
+        }
+
+        Product product = productRepository.findProductWithDetails(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
+
+        GetProductWithDetailsResponseDto responseDto = productAdapter.mapToGetProductWithDetailsResponseDto(product);
+
+        productRedisCache.putSummary(id, responseDto);
+        return responseDto;
+    }
 }

@@ -11,4 +11,5 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 public class GetProductWithDetailsResponseDto extends GetProductResponseDto{
   private String category;
+  private String vendor;
 }

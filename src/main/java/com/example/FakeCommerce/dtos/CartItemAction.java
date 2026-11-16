@@ -1,8 +1,6 @@
 package com.example.FakeCommerce.dtos;
 
-public enum OrderItemAction {
-    ADD,
-    REMOVE,
+public enum CartItemAction {
     INCREMENT,
     DECREMENT
 }

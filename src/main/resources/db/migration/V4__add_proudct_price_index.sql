@@ -1,1 +1,0 @@
-CREATE INDEX idx_product_price ON products (price);
