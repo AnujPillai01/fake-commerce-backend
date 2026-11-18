@@ -25,7 +25,6 @@ public class Vendor extends BaseEntity{
     private VendorStatus status = VendorStatus.PENDING;
 
     @OneToOne(fetch = FetchType.LAZY,optional = false)
-    @MapsId
-    @JoinColumn(name = "id")
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 }
