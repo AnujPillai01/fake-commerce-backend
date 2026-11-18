@@ -17,8 +17,6 @@ import org.hibernate.annotations.SQLRestriction;
                 @UniqueConstraint(columnNames = {"cart_id", "product_id"})
         }
 )
-@SQLDelete(sql="UPDATE cart_items SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
-@SQLRestriction("deleted_at IS NULL")
 public class CartItem extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id", nullable = false)
