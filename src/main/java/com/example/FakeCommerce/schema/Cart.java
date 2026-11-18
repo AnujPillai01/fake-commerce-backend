@@ -15,8 +15,6 @@ import java.util.List;
 @Builder
 @Entity
 @Table(name = "carts")
-@SQLDelete(sql="UPDATE carts SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
-@SQLRestriction("deleted_at IS NULL")
 public class Cart extends BaseEntity{
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
